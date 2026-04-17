@@ -1,40 +1,56 @@
-# FacialEmotionRecognizerIntroduction
-  > 实际项目（包含源代码）地址：https://github.com/aurorarain/FacialEmotionRecognizer
+# FacialEmotionRecognizer - 基于深度学习的人脸情绪识别系统
 
   ## 项目简介
 
-  基于深度学习的人脸情绪识别系统，支持图片上传和摄像头实时识别，可识别愤怒、厌恶、恐惧、开心、悲伤、惊讶、中性共 7 种情绪。
+  本项目是一个完整的端到端人脸情绪识别 Web 应用，能够通过上传图片或开启摄像头实时识别画面中人脸的情绪，支持同时检测多张人脸并标注结果。系统可识别
+  **愤怒（Angry）、厌恶（Disgust）、恐惧（Fear）、开心（Happy）、悲伤（Sad）、惊讶（Surprise）、中性（Neutral）** 7 种情绪，并以概率形式返回各类别的置信度。
+  
+  ## 项目仓库
 
-  ## 整体架构
+  https://github.com/aurorarain/FacialEmotionRecognizer
 
-  ```
-  前端（React + TypeScript）
-          ↓ HTTP API
-  后端（Java Spring Boot）→ OpenCV 人脸检测
-          ↓ ONNX Runtime 推理
-  AI 模型（ResNet18 → ONNX 格式）
-  ```
+  因毕业设计尚未答辩，源码暂不公开，答辩完成后公开。如有学术交流需求可通过 GitHub 联系。
 
-  - **前端**：图片上传与摄像头实时识别两种交互方式
-  - **后端**：接收请求，调用人脸检测与情绪分类，返回识别结果
-  - **AI 推理**：PyTorch 训练的模型导出为 ONNX 格式，通过 ONNX Runtime 在后端直接加载，无需 Python 环境
 
-  ## 训练流程
+  ## 技术架构
 
-  - **数据集**：FER2013 公开数据集，约 3.5 万张 48×48 灰度人脸表情图像
-  - **模型**：ResNet18 + ImageNet 预训练权重迁移学习
-  - **策略**：数据增强、类别加权、过采样、学习率余弦退火、Dropout、早停机制
-  - **部署**：PyTorch 模型导出为 ONNX 标准格式，实现训练框架与部署环境解耦
+  项目采用前后端分离架构，模型训练与推理部署分离：
 
-  ## 技术栈
+  - **模型训练**：Python + PyTorch，使用 EfficientNet-B3 作为骨干网络进行迁移学习，训练数据采用 AffectNet 数据集（约 20,000
+  张人脸图片，涵盖多族裔、多角度），两阶段训练策略（先冻结骨干网络训练分类头，再全量微调），训练在 NVIDIA RTX 4090D 云端 GPU 上完成
+  - **模型部署**：训练完成后导出为 ONNX 格式，通过 ONNX Runtime 在 Java 后端加载并执行推理，无需 Python 环境即可运行
+  - **后端**：Java 17 + Spring Boot 3.2.0，提供 REST API 接口，支持文件上传和 Base64 两种图片输入方式，集成 OpenCV 进行人脸检测与图像预处理
+  - **前端**：React 18 + TypeScript + Vite 5 + TailwindCSS，提供图片上传识别和摄像头实时识别两种交互模式，实时模式下通过彩色方框标注每个人脸的位置、情绪和置信度
 
-  | 阶段 | 技术 |
+  ## 核心功能
+
+  - **图片上传识别**：上传包含人脸的图片，系统自动检测人脸区域并返回 7 类情绪的概率分布
+  - **摄像头实时多人脸识别**：开启摄像头，实时检测画面中的所有人脸，用不同颜色的方框标注每个人脸的位置和情绪标签，实时更新识别结果
+  - **多人脸支持**：单张图片或单帧画面中可同时识别多张人脸，每张人脸独立返回情绪分析结果
+  - **健康检查接口**：提供后端服务状态和模型加载状态的监控接口
+
+  ## 推理流程
+
+  1. 接收前端发送的图片（文件上传或摄像头帧）
+  2. OpenCV Haar Cascade 检测人脸位置
+  3. 裁剪人脸区域并添加边距扩展
+  4. 缩放至 300×300，BGR 转 RGB，ImageNet 标准化
+  5. ONNX Runtime 执行 EfficientNet-B3 推理
+  6. Softmax 将输出 logits 转为概率分布
+  7. 返回每张人脸的情绪类别和置信度
+
+  ## 模型信息
+
+  | 项目 | 说明 |
   |------|------|
-  | 训练 | PyTorch + ResNet18 |
-  | 数据集 | FER2013 |
-  | 模型部署 | ONNX Runtime |
-  | 后端 | Java Spring Boot + OpenCV |
-  | 前端 | React + TypeScript |
+  | 模型架构 | EfficientNet-B3（ImageNet 预训练） |
+  | 参数量 | 约 1200 万 |
+  | 输入尺寸 | 3 × 300 × 300 RGB |
+  | 输出 | 7 类情绪 logits |
+  | 训练数据 | AffectNet（去掉 Contempt 类别，7 类共约 20,000 张） |
+  | 验证准确率 | 73.83% |
+  | 独立测试集 | 7/7（100%） |
+  | 模型格式 | ONNX（约 41MB） |
 
   ## 作者
 
